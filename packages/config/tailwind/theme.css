@@ -1,0 +1,49 @@
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #525252;
+  --color-subtle: #737373;
+
+  --color-border: #e5e5e5;
+  --color-border-strong: #d4d4d4;
+  --color-border-interactive: #d4d700;
+
+  --color-accent: #d4d700;
+  --color-accent-foreground: #0a0a0a;
+  --color-accent-hover: #c4c700;
+  --color-accent-muted: #f7f8c4;
+
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --color-warning: #ca8a04;
+  --color-warning-foreground: #ffffff;
+
+  --color-ring: #d4d700;
+
+  --font-display: var(--font-bricolage, "Bricolage Grotesque"), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: var(--font-instrument, "Instrument Sans"), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --ease-uvico: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  --container-content: 72rem;
+  --container-wide: 88rem;
+}

@@ -1,0 +1,37 @@
+@theme {
+  --animate-infinite-scroll: infinite-scroll 25s linear infinite;
+}
+
+@keyframes infinite-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes cell-ripple {
+  0% {
+    background-color: rgba(212, 215, 0, 0.4); /* Amarillo Uvico */
+    border-color: rgba(212, 215, 0, 0.8);
+  }
+  50% {
+    background-color: rgba(212, 215, 0, 0.2);
+  }
+  100% {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+@keyframes uvico-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes uvico-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .animate-fade-in { animation: uvico-fade-in var(--duration-base) var(--ease-uvico) both; }
+  .animate-fade-up { animation: uvico-fade-up var(--duration-slow) var(--ease-uvico) both; }
+}
