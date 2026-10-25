@@ -1,0 +1,15 @@
+FROM golang:1.24-alpine AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/cron ./cmd/cron
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /out/api /api
+COPY --from=builder /out/worker /worker
+COPY --from=builder /out/cron /cron
+USER nonroot:nonroot
+ENTRYPOINT ["/api"]

@@ -1,0 +1,3 @@
+-- No es posible remover un valor de un enum sin recrear el tipo entero.
+-- Si necesitas hacer down, se requiere una migración destructiva manual.
+-- Se deja vacío intencionalmente.

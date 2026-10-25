@@ -19,12 +19,13 @@
 
   --color-border: #e5e5e5;
   --color-border-strong: #d4d4d4;
-  --color-border-interactive: #d4d700;
+  --color-border-interactive: #A7C957;
 
-  --color-accent: #d4d700;
+  /* NUEVA PALETA DE ACENTO: Verde Salvia */
+  --color-accent: #A7C957;
   --color-accent-foreground: #0a0a0a;
-  --color-accent-hover: #c4c700;
-  --color-accent-muted: #f7f8c4;
+  --color-accent-hover: #95B54D;
+  --color-accent-muted: #F0F5E6;
 
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
@@ -33,7 +34,7 @@
   --color-warning: #ca8a04;
   --color-warning-foreground: #ffffff;
 
-  --color-ring: #d4d700;
+  --color-ring: #A7C957;
 
   --font-display: var(--font-bricolage, "Bricolage Grotesque"), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-body: var(--font-instrument, "Instrument Sans"), ui-sans-serif, system-ui, -apple-system, sans-serif;

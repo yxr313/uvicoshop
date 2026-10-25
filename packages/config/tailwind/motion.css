@@ -9,11 +9,12 @@
 
 @keyframes cell-ripple {
   0% {
-    background-color: rgba(212, 215, 0, 0.4); /* Amarillo Uvico */
-    border-color: rgba(212, 215, 0, 0.8);
+    /* Nuevo color de Uvico en RGBA: #A7C957 */
+    background-color: rgba(167, 201, 87, 0.4); 
+    border-color: rgba(167, 201, 87, 0.8);
   }
   50% {
-    background-color: rgba(212, 215, 0, 0.2);
+    background-color: rgba(167, 201, 87, 0.2);
   }
   100% {
     background-color: transparent;

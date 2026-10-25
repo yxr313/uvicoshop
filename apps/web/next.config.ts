@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@uvico/config", "@uvico/pricing"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
+  },
+  // ESTO ARREGLA EL ERROR DE TURBOPACK:
+  turbopack: {
+    root: path.resolve(__dirname, "../.."),
   },
   async headers() {
     return [
