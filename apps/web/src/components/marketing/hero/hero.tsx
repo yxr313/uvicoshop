@@ -13,7 +13,7 @@ export function Hero() {
 
         {/* Slug Register (ahora limitado a max-w-xl) */}
         <div className="max-w-xl mx-auto mb-16">
-          <SlugBuilder variant="dark" />
+          <SlugBuilder variant="default" />
         </div>
 
         {/* Trust Bar (Carrusel) */}

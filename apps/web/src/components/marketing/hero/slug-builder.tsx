@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 interface SlugBuilderProps {
   variant?: "default" | "dark";
@@ -18,11 +17,7 @@ export function SlugBuilder({ variant = "dark", className, initialSlug = "" }: S
   const [slug, setSlug] = useState(initialSlug);
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-  
-  // Memoizamos el cliente para evitar re-renders infinitos
-  const supabase = useMemo(() => createClient(), []);
 
-  // Debounce: Espera 500ms después de que el usuario deja de escribir
   useEffect(() => {
     if (slug.length < 3) {
       setIsAvailable(null);
@@ -31,23 +26,25 @@ export function SlugBuilder({ variant = "dark", className, initialSlug = "" }: S
 
     const timer = setTimeout(async () => {
       setIsChecking(true);
-      
-      // Llamamos a la función RPC segura que creamos en Supabase
-      const { data, error } = await supabase
-        .rpc("is_slug_available", { slug_to_check: slug });
-
-      if (error) {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/v1";
+        const res = await fetch(`${apiUrl}/tenants/check-slug?slug=${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsAvailable(data.available);
+        } else {
+          setIsAvailable(null);
+        }
+      } catch (error) {
         console.error("Error checking slug:", error);
         setIsAvailable(null);
-      } else {
-        setIsAvailable(data);
+      } finally {
+        setIsChecking(false);
       }
-      
-      setIsChecking(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [slug, supabase]);
+  }, [slug]);
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -60,25 +57,26 @@ export function SlugBuilder({ variant = "dark", className, initialSlug = "" }: S
     }
   };
 
-  // Texto dinámico del botón
   const getButtonText = () => {
     if (slug.length < 3) return "Crear tienda";
     if (isChecking) return "Verificando...";
     if (isAvailable === false) return "No disponible";
-    if (isAvailable === true) return "Crear tienda";
     return "Crear tienda";
   };
 
   const isButtonDisabled = isAvailable !== true || isChecking;
 
+  // Mapeo seguro: "dark" → "secondary", "default" → "default"
+  const buttonVariant = variant === "dark" ? "secondary" : "default";
+
   return (
     <div className={cn("w-full", className)}>
-      <div 
+      <div
         className={cn(
           "flex flex-col sm:flex-row items-center w-full p-1.5 bg-white border rounded-full shadow-sm transition-all duration-300",
           "focus-within:shadow-md",
-          isAvailable === false ? "border-red-400 focus-within:border-red-400" : 
-          isAvailable === true ? "border-green-400 focus-within:border-green-400" : 
+          isAvailable === false ? "border-red-400 focus-within:border-red-400" :
+          isAvailable === true ? "border-green-400 focus-within:border-green-400" :
           "border-border focus-within:border-neutral-300"
         )}
       >
@@ -93,8 +91,6 @@ export function SlugBuilder({ variant = "dark", className, initialSlug = "" }: S
             placeholder="mi-tienda"
             className="w-full bg-transparent outline-none placeholder:text-neutral-300 text-foreground font-medium text-sm"
           />
-          
-          {/* Iconos de estado integrados en la píldora */}
           <div className="flex items-center justify-center w-6 h-6 ml-2 shrink-0">
             {isChecking && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />}
             {!isChecking && isAvailable === true && <CheckCircle2 className="w-4 h-4 text-green-500" />}
@@ -102,8 +98,8 @@ export function SlugBuilder({ variant = "dark", className, initialSlug = "" }: S
           </div>
         </div>
 
-        <Button 
-          variant={variant} 
+        <Button
+          variant={buttonVariant}
           onClick={handleCreate}
           disabled={isButtonDisabled}
           className={cn(

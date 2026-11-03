@@ -62,18 +62,18 @@ func (r *OrderRepo) CreateWithReservationTx(ctx context.Context, tx pgx.Tx, o *o
 }
 
 func (r *OrderRepo) GetByPaymentRef(ctx context.Context, paymentRef string) (*order.Order, error) {
-	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE payment_ref = $1`, paymentRef)
+	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE o.payment_ref = $1`, paymentRef)
 	return scanOrder(row)
 }
 
 func (r *OrderRepo) GetByID(ctx context.Context, tenantID shared.TenantID, orderID string) (*order.Order, error) {
-	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE tenant_id = $1 AND id = $2`,
+	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE o.tenant_id = $1 AND o.id = $2`,
 		tenantID.String(), orderID)
 	return scanOrder(row)
 }
 
 func (r *OrderRepo) GetByAccessToken(ctx context.Context, accessToken string) (*order.Order, error) {
-	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE access_token = $1`, accessToken)
+	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE o.access_token = $1`, accessToken)
 	return scanOrder(row)
 }
 
@@ -83,16 +83,19 @@ func (r *OrderRepo) List(ctx context.Context, tenantID shared.TenantID, filter o
 		limit = 50
 	}
 	args := []any{tenantID.String(), limit}
-	q := selectOrderColumns + ` WHERE tenant_id = $1`
+	q := selectOrderColumns + ` WHERE o.tenant_id = $1`
+
 	if filter.Status != nil {
 		args = append(args, string(*filter.Status))
-		q += fmt.Sprintf(" AND status = $%d", len(args))
+		q += fmt.Sprintf(" AND o.status = $%d", len(args))
 	}
+
 	if filter.CursorCreatedAt != nil && filter.CursorID != nil {
 		args = append(args, *filter.CursorCreatedAt, filter.CursorID.String())
-		q += fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", len(args)-1, len(args))
+		q += fmt.Sprintf(" AND (o.created_at, o.id) < ($%d, $%d)", len(args)-1, len(args))
 	}
-	q += " ORDER BY created_at DESC, id DESC LIMIT $2"
+
+	q += " ORDER BY o.created_at DESC, o.id DESC LIMIT $2"
 
 	rows, err := r.pool.Query(ctx, q, args...)
 	if err != nil {
@@ -131,28 +134,30 @@ func (r *OrderRepo) UpdateWithOutbox(ctx context.Context, o *order.Order, eventT
 }
 
 func (r *OrderRepo) GetByPaymentRefForUpdate(ctx context.Context, paymentRef string) (*order.Order, error) {
-	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE payment_ref = $1`, paymentRef)
+	row := r.pool.QueryRow(ctx, selectOrderColumns+` WHERE o.payment_ref = $1`, paymentRef)
 	return scanOrder(row)
 }
 
 func (r *OrderRepo) GetByPaymentRefForUpdateTx(ctx context.Context, tx pgx.Tx, paymentRef string) (*order.Order, error) {
-	row := tx.QueryRow(ctx, selectOrderColumns+` WHERE payment_ref = $1 FOR UPDATE`, paymentRef)
+	row := tx.QueryRow(ctx, selectOrderColumns+` WHERE o.payment_ref = $1 FOR UPDATE OF o`, paymentRef)
 	return scanOrder(row)
 }
 
 func (r *OrderRepo) GetByAccessTokenForUpdateTx(ctx context.Context, tx pgx.Tx, accessToken string) (*order.Order, error) {
-	row := tx.QueryRow(ctx, selectOrderColumns+` WHERE access_token = $1 FOR UPDATE`, accessToken)
+	row := tx.QueryRow(ctx, selectOrderColumns+` WHERE o.access_token = $1 FOR UPDATE OF o`, accessToken)
 	return scanOrder(row)
 }
 
 const selectOrderColumns = `
-	SELECT id, tenant_id, customer_id, sale_mode, provider_id, status, currency,
-	       total_cents, uvico_commission_cents, provider_payout_cents, gateway_fee_cents, merchant_net_cents,
-	       payment_ref, paid_at, failed_at, cancelled_at, refunded_at,
-	       payment_method, access_token, customer_payment_reference, customer_payment_proof_url,
-	       customer_submitted_at, merchant_confirmed_at, merchant_confirmed_by, merchant_rejection_reason,
-	       created_at, updated_at, version
-	  FROM orders
+	SELECT o.id, o.tenant_id, o.customer_id, COALESCE(c.name, '') as customer_name, 
+	       o.sale_mode, o.provider_id, o.status, o.currency,
+	       o.total_cents, o.uvico_commission_cents, o.provider_payout_cents, o.gateway_fee_cents, o.merchant_net_cents,
+	       o.payment_ref, o.paid_at, o.failed_at, o.cancelled_at, o.refunded_at,
+	       o.payment_method, o.access_token, o.customer_payment_reference, o.customer_payment_proof_url,
+	       o.customer_submitted_at, o.merchant_confirmed_at, o.merchant_confirmed_by, o.merchant_rejection_reason,
+	       o.created_at, o.updated_at, o.version
+	  FROM orders o
+	  LEFT JOIN customers c ON o.customer_id = c.id
 `
 
 func updateOrderTx(ctx context.Context, tx pgx.Tx, o *order.Order) error {
@@ -190,13 +195,14 @@ func updateOrderTx(ctx context.Context, tx pgx.Tx, o *order.Order) error {
 func scanOrder(row rowScanner) (*order.Order, error) {
 	var o order.Order
 	var tid, sm, st, curr string
+	var customerName string
 	var providerID *string
 	var total, uvico, prov, gate, net int64
 	var paymentMethod, accessToken *string
 	var custRef, custProof, merchantConfirmedBy, rejectionReason *string
 
 	err := row.Scan(
-		&o.ID, &tid, &o.CustomerID, &sm, &providerID, &st, &curr,
+		&o.ID, &tid, &o.CustomerID, &customerName, &sm, &providerID, &st, &curr,
 		&total, &uvico, &prov, &gate, &net,
 		&o.PaymentRef, &o.PaidAt, &o.FailedAt, &o.CancelledAt, &o.RefundedAt,
 		&paymentMethod, &accessToken, &custRef, &custProof,
@@ -214,6 +220,8 @@ func scanOrder(row rowScanner) (*order.Order, error) {
 	o.SaleMode = order.SaleMode(sm)
 	o.Status = order.Status(st)
 	o.Currency = shared.Currency(curr)
+	o.CustomerName = customerName
+
 	if providerID != nil {
 		pid := shared.ProviderID(*providerID)
 		o.ProviderID = &pid
@@ -243,4 +251,292 @@ func scanOrder(row rowScanner) (*order.Order, error) {
 		o.MerchantRejectionReason = *rejectionReason
 	}
 	return &o, nil
+}
+
+// ==========================================
+// MÉTODOS DE ANALYTICS (CON CÁLCULO DE TENDENCIAS)
+// ==========================================
+
+type AnalyticsSummary struct {
+	NewCustomers            int64               `json:"new_customers"`
+	NewCustomersTrend       float64             `json:"new_customers_trend"`
+	ReturningCustomers      int64               `json:"returning_customers"`
+	ReturningCustomersTrend float64             `json:"returning_customers_trend"`
+	RepeatRate              float64             `json:"repeat_rate"`
+	RepeatRateTrend         float64             `json:"repeat_rate_trend"`
+	TopPaymentMethod        string              `json:"top_payment_method"`
+	TopPaymentCount         int64               `json:"top_payment_count"`
+	PaymentMethods          []PaymentMethodStat `json:"payment_methods"`
+}
+
+type PaymentMethodStat struct {
+	Method string `json:"method"`
+	Count  int64  `json:"count"`
+}
+
+func calculateTrend(current, previous int64) float64 {
+	if previous == 0 {
+		if current > 0 {
+			return 100.0
+		}
+		return 0.0
+	}
+	return (float64(current) - float64(previous)) / float64(previous) * 100.0
+}
+
+func (r *OrderRepo) GetAnalyticsSummary(ctx context.Context, tenantID shared.TenantID) (*AnalyticsSummary, error) {
+	var summary AnalyticsSummary
+
+	query := `
+		WITH current_period AS (
+			SELECT customer_id, COUNT(id) as order_count
+			FROM orders
+			WHERE tenant_id = $1 AND status = 'paid' AND created_at >= NOW() - INTERVAL '30 days'
+			GROUP BY customer_id
+		),
+		prev_period AS (
+			SELECT customer_id, COUNT(id) as order_count
+			FROM orders
+			WHERE tenant_id = $1 AND status = 'paid' AND created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days'
+			GROUP BY customer_id
+		),
+		all_time AS (
+			SELECT customer_id, COUNT(id) as order_count
+			FROM orders
+			WHERE tenant_id = $1 AND status = 'paid'
+			GROUP BY customer_id
+		)
+		SELECT 
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count = 1), 0)::bigint FROM current_period) AS curr_new,
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count > 1), 0)::bigint FROM current_period) AS curr_ret,
+			
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count = 1), 0)::bigint FROM prev_period) AS prev_new,
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count > 1), 0)::bigint FROM prev_period) AS prev_ret,
+			
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count = 1), 0)::bigint FROM all_time) AS all_new,
+			(SELECT COALESCE(COUNT(*) FILTER (WHERE order_count > 1), 0)::bigint FROM all_time) AS all_ret
+	`
+
+	var currNew, currRet, prevNew, prevRet, allNew, allRet int64
+	err := r.pool.QueryRow(ctx, query, tenantID.String()).Scan(
+		&currNew, &currRet, &prevNew, &prevRet, &allNew, &allRet,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("analytics summary: customers: %w", err)
+	}
+
+	summary.NewCustomers = allNew
+	summary.ReturningCustomers = allRet
+
+	totalCust := allNew + allRet
+	if totalCust > 0 {
+		summary.RepeatRate = (float64(allRet) / float64(totalCust)) * 100
+	}
+
+	summary.NewCustomersTrend = calculateTrend(currNew, prevNew)
+	summary.ReturningCustomersTrend = calculateTrend(currRet, prevRet)
+
+	currTotal := currNew + currRet
+	prevTotal := prevNew + prevRet
+	var currRepeatRate, prevRepeatRate float64
+	if currTotal > 0 {
+		currRepeatRate = (float64(currRet) / float64(currTotal)) * 100
+	}
+	if prevTotal > 0 {
+		prevRepeatRate = (float64(prevRet) / float64(prevTotal)) * 100
+	}
+
+	if prevRepeatRate == 0 {
+		if currRepeatRate > 0 {
+			summary.RepeatRateTrend = 100
+		}
+	} else {
+		summary.RepeatRateTrend = ((currRepeatRate - prevRepeatRate) / prevRepeatRate) * 100
+	}
+
+	queryMethods := `
+		SELECT COALESCE(payment_method, 'unknown'), COUNT(id)::bigint
+		FROM orders
+		WHERE tenant_id = $1 AND status = 'paid'
+		GROUP BY payment_method
+		ORDER BY COUNT(id) DESC
+	`
+	rows, err := r.pool.Query(ctx, queryMethods, tenantID.String())
+	if err != nil {
+		return nil, fmt.Errorf("analytics summary: methods: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var stat PaymentMethodStat
+		if err := rows.Scan(&stat.Method, &stat.Count); err != nil {
+			return nil, err
+		}
+		summary.PaymentMethods = append(summary.PaymentMethods, stat)
+	}
+
+	if len(summary.PaymentMethods) > 0 {
+		summary.TopPaymentMethod = summary.PaymentMethods[0].Method
+		summary.TopPaymentCount = summary.PaymentMethods[0].Count
+	}
+
+	return &summary, rows.Err()
+}
+
+type TopProductStat struct {
+	Name         string `json:"name"`
+	Quantity     int64  `json:"quantity"`
+	RevenueCents int64  `json:"revenue_cents"`
+}
+
+func (r *OrderRepo) GetTopProducts(ctx context.Context, tenantID shared.TenantID, limit int) ([]TopProductStat, error) {
+	query := `
+		SELECT 
+			oi.name,
+			SUM(oi.quantity)::bigint as total_qty,
+			SUM(oi.total_price_cents)::bigint as total_revenue
+		FROM order_items oi
+		JOIN orders o ON oi.order_id = o.id
+		WHERE o.tenant_id = $1 AND o.status = 'paid'
+		GROUP BY oi.name
+		ORDER BY total_revenue DESC
+		LIMIT $2
+	`
+	rows, err := r.pool.Query(ctx, query, tenantID.String(), limit)
+	if err != nil {
+		return nil, fmt.Errorf("analytics summary: top products: %w", err)
+	}
+	defer rows.Close()
+
+	var products []TopProductStat
+	for rows.Next() {
+		var p TopProductStat
+		if err := rows.Scan(&p.Name, &p.Quantity, &p.RevenueCents); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
+}
+
+// ==========================================
+// MÉTODOS OPERATIVOS (HÍBRIDOS: INVENTARIO PROPIO + DROPSHIPPING)
+// ==========================================
+
+type OperationalStats struct {
+	PendingPayments  int64 `json:"pending_payments"`
+	PendingShipments int64 `json:"pending_shipments"`
+	LowStockProducts int64 `json:"low_stock_products"`
+	HasOwnInventory  bool  `json:"has_own_inventory"`
+	HasDropshipping  bool  `json:"has_dropshipping"`
+}
+
+func (r *OrderRepo) GetOperationalStats(ctx context.Context, tenantID shared.TenantID) (*OperationalStats, error) {
+	var stats OperationalStats
+
+	// 0. Detectar modos de venta del comerciante (Propio vs Dropshipping)
+	queryModes := `
+		SELECT 
+			EXISTS(SELECT 1 FROM products WHERE tenant_id = $1 AND sale_mode = 'own_inventory') as has_own,
+			EXISTS(SELECT 1 FROM products WHERE tenant_id = $1 AND sale_mode = 'dropshipping_verified') as has_drop
+	`
+	err := r.pool.QueryRow(ctx, queryModes, tenantID.String()).Scan(&stats.HasOwnInventory, &stats.HasDropshipping)
+	if err != nil {
+		return nil, fmt.Errorf("operational stats: modes: %w", err)
+	}
+
+	// 1. Pagos por verificar (SOLO aplicable a inventario propio)
+	queryPayments := `
+		SELECT COUNT(id)::bigint 
+		FROM orders 
+		WHERE tenant_id = $1 AND status = 'pending_payment' 
+		  AND customer_payment_proof_url IS NOT NULL
+		  AND sale_mode = 'own_inventory'
+	`
+	_ = r.pool.QueryRow(ctx, queryPayments, tenantID.String()).Scan(&stats.PendingPayments)
+
+	// 2. Pedidos por despachar (Aplica a ambos modos)
+	queryShipments := `
+		SELECT COUNT(id)::bigint 
+		FROM orders 
+		WHERE tenant_id = $1 AND status = 'paid' AND created_at >= NOW() - INTERVAL '7 days'
+	`
+	_ = r.pool.QueryRow(ctx, queryShipments, tenantID.String()).Scan(&stats.PendingShipments)
+
+	// 3. Productos con bajo stock (SOLO aplicable a inventario propio)
+	queryStock := `
+		SELECT COUNT(id)::bigint 
+		FROM products 
+		WHERE tenant_id = $1 AND status = 'active' AND stock <= 5 AND sale_mode = 'own_inventory'
+	`
+	_ = r.pool.QueryRow(ctx, queryStock, tenantID.String()).Scan(&stats.LowStockProducts)
+
+	return &stats, nil
+}
+
+type LowStockProduct struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Stock int64  `json:"stock"`
+	SKU   string `json:"sku"`
+}
+
+func (r *OrderRepo) GetLowStockProducts(ctx context.Context, tenantID shared.TenantID) ([]LowStockProduct, error) {
+	query := `
+		SELECT id, name, stock, sku 
+		FROM products 
+		WHERE tenant_id = $1 AND status = 'active' AND stock <= 5 AND sale_mode = 'own_inventory'
+		ORDER BY stock ASC
+		LIMIT 5
+	`
+	rows, err := r.pool.Query(ctx, query, tenantID.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []LowStockProduct
+	for rows.Next() {
+		var p LowStockProduct
+		if err := rows.Scan(&p.ID, &p.Name, &p.Stock, &p.SKU); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
+}
+
+type PendingOrder struct {
+	ID            string `json:"id"`
+	CustomerName  string `json:"customer_name"`
+	TotalCents    int64  `json:"total_cents"`
+	PaymentMethod string `json:"payment_method"`
+	SaleMode      string `json:"sale_mode"` // AÑADIDO: Para saber si es Manual o Auto
+	CreatedAt     string `json:"created_at"`
+}
+
+func (r *OrderRepo) GetPendingOrders(ctx context.Context, tenantID shared.TenantID) ([]PendingOrder, error) {
+	query := `
+		SELECT o.id, COALESCE(c.name, 'Cliente'), o.total_cents, COALESCE(o.payment_method, 'N/A'), o.sale_mode, o.created_at
+		FROM orders o
+		LEFT JOIN customers c ON o.customer_id = c.id
+		WHERE o.tenant_id = $1 AND o.status IN ('pending_payment', 'paid')
+		ORDER BY o.created_at DESC
+		LIMIT 5
+	`
+	rows, err := r.pool.Query(ctx, query, tenantID.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []PendingOrder
+	for rows.Next() {
+		var o PendingOrder
+		if err := rows.Scan(&o.ID, &o.CustomerName, &o.TotalCents, &o.PaymentMethod, &o.SaleMode, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	return orders, rows.Err()
 }

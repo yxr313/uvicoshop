@@ -76,6 +76,19 @@ const stages = [
 
 type Stage = (typeof stages)[number]["key"];
 
+const STAGE_KEYS: readonly Stage[] = ["Lead", "Qualified", "Proposal", "Won"];
+const DEFAULT_STAGE: Stage = "Lead";
+
+function getStageAt(index: number): Stage {
+  return STAGE_KEYS[index % STAGE_KEYS.length] ?? DEFAULT_STAGE;
+}
+
+function getNextStage(current: Stage): Stage {
+  const idx = STAGE_KEYS.indexOf(current);
+  if (idx < 0 || idx >= STAGE_KEYS.length - 1) return current;
+  return STAGE_KEYS[idx + 1] ?? current;
+}
+
 type Deal = {
   id: string;
   company: string;
@@ -85,14 +98,13 @@ type Deal = {
   stage: Stage;
 };
 
-// Derive initial deals from customers, distributed deterministically across stages.
 const initialDeals: Deal[] = customers.slice(0, 24).map((c, i) => ({
   id: c.id,
   company: c.company,
   owner: c.name,
   avatar: c.avatar,
   amount: 4200 + ((i * 2137) % 82000),
-  stage: stages[i % stages.length].key,
+  stage: getStageAt(i),
 }));
 
 function ChartMenu({ title }: { title: string }) {
@@ -158,7 +170,7 @@ export default function CrmPage() {
     const company = (data.get("company") as string)?.trim() || "New Company";
     const owner = (data.get("owner") as string)?.trim() || currentUser.name;
     const amount = Math.max(0, Math.round(Number(data.get("amount")) || 0));
-    const stage = (data.get("stage") as Stage) || "Lead";
+    const stage = (data.get("stage") as Stage) || DEFAULT_STAGE;
     const deal: Deal = {
       id: `DEAL-${nextId.current++}`,
       company,
@@ -170,7 +182,7 @@ export default function CrmPage() {
     setDeals((prev) => [deal, ...prev]);
     setAddOpen(false);
     toast.success("Deal added", {
-      description: `${company} — $${amount.toLocaleString()} added to ${stage}.`,
+      description: `${company} - $${amount.toLocaleString()} added to ${stage}.`,
     });
   }
 
@@ -178,14 +190,13 @@ export default function CrmPage() {
     setDeals((prev) =>
       prev.map((d) => {
         if (d.id !== id) return d;
-        const idx = stages.findIndex((s) => s.key === d.stage);
-        if (idx >= stages.length - 1) {
+        const next = getNextStage(d.stage);
+        if (next === d.stage) {
           toast("Already at the final stage", {
             description: `${d.company} is in ${d.stage}.`,
           });
           return d;
         }
-        const next = stages[idx + 1].key;
         toast.success("Deal moved", {
           description: `${d.company} moved to ${next}.`,
         });
@@ -202,8 +213,8 @@ export default function CrmPage() {
           toast("Deal already won", { description: d.company });
           return d;
         }
-        toast.success("Deal won 🎉", {
-          description: `${d.company} — $${d.amount.toLocaleString()}.`,
+        toast.success("Deal won", {
+          description: `${d.company} - $${d.amount.toLocaleString()}.`,
         });
         return { ...d, stage: "Won" };
       })
@@ -346,7 +357,7 @@ export default function CrmPage() {
                         onClick={() => openAdd(stage.key)}
                         className="rounded-lg border border-dashed p-3 text-left text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground"
                       >
-                        No deals yet — add one
+                        No deals yet - add one
                       </button>
                     )}
                   </div>

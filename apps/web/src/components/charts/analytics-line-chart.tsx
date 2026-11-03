@@ -2,67 +2,50 @@
 
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
-  ChartConfig,
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
 const config = {
-  visitors: { label: "Visitors", color: "var(--chart-1)" },
-  pageviews: { label: "Page Views", color: "var(--chart-2)" },
+  visits: { label: "Visitantes", color: "#A7C957" },
 } satisfies ChartConfig;
 
-// A believable 30-day trend of visitors and page views.
-const base = [
-  2140, 2380, 2210, 2560, 2890, 2470, 2050, 2320, 2680, 2910, 3120, 2870,
-  2640, 2980, 3340, 3610, 3280, 2960, 3180, 3520, 3810, 3640, 3290, 3480,
-  3760, 4020, 3880, 3560, 3920, 4180,
-];
+export function AnalyticsLineChart({ data = [] }: { data?: any[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+        No hay visitas registradas en este período.
+      </div>
+    );
+  }
 
-const data = base.map((visitors, i) => ({
-  day: `${i + 1}`,
-  visitors,
-  pageviews: Math.round(visitors * (2.4 + ((i % 5) * 0.06))),
-}));
-
-export function AnalyticsLineChart() {
   return (
     <ChartContainer config={config} className="aspect-auto h-[300px] w-full">
       <LineChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis
-          dataKey="day"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={10}
-          interval={4}
-          tickFormatter={(v) => `Jun ${v}`}
+        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e5e5" />
+        <XAxis 
+          dataKey="time" 
+          tickLine={false} 
+          axisLine={false} 
+          tickMargin={10} 
+          tick={{ fill: "#737373", fontSize: 12 }}
         />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          width={44}
-          tickFormatter={(v) => `${v / 1000}k`}
+        <YAxis 
+          tickLine={false} 
+          axisLine={false} 
+          tickMargin={8} 
+          width={44} 
+          tick={{ fill: "#737373", fontSize: 12 }}
         />
-        <ChartTooltip
-          cursor={false}
-          content={<ChartTooltipContent indicator="line" />}
-        />
-        <Line
-          dataKey="pageviews"
-          type="monotone"
-          stroke="var(--chart-2)"
-          strokeWidth={2}
-          dot={false}
-        />
-        <Line
-          dataKey="visitors"
-          type="monotone"
-          stroke="var(--chart-1)"
-          strokeWidth={2}
-          dot={false}
+        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+        <Line 
+          dataKey="visits" 
+          type="monotone" 
+          stroke="#A7C957" 
+          strokeWidth={2} 
+          dot={false} 
         />
       </LineChart>
     </ChartContainer>

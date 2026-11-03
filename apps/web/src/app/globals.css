@@ -1,2 +1,5 @@
 @import "tailwindcss";
 @import "@uvico/config/tailwind";
+
+/* Todo el sistema de diseño y variables de color 
+   se manejan desde packages/config/tailwind */

@@ -33,6 +33,7 @@ type productResponse struct {
 	CreatedAt   string  `json:"created_at"`
 	UpdatedAt   string  `json:"updated_at"`
 	Version     int64   `json:"version"`
+	Stock       int64   `json:"stock"` // <-- AÑADIDO
 }
 
 type errorResponse struct {

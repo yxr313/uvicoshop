@@ -8,14 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"uvico-api/internal/domain/attribution"
+	"uvico-api/internal/domain/shared"
+	"uvico-api/internal/platform/database"
 )
 
-type AttributionRepo struct{}
+type AttributionRepo struct {
+	pool *database.Pool
+}
 
-func NewAttributionRepo() *AttributionRepo { return &AttributionRepo{} }
+func NewAttributionRepo(pool *database.Pool) *AttributionRepo {
+	return &AttributionRepo{pool: pool}
+}
 
 // InsertOrderAttributionTx usa SAVEPOINT para que un fallo de constraint
-// (por ejemplo, un click_id que excede el límite del TEXT en algún edge)
 // no aborte la transacción principal del checkout.
 func (r *AttributionRepo) InsertOrderAttributionTx(
 	ctx context.Context,
@@ -113,6 +118,43 @@ func (r *AttributionRepo) InsertFirstTouchTx(
 
 	_, _ = t.Exec(ctx, "RELEASE SAVEPOINT first_touch_insert")
 	return nil
+}
+
+// GetTrafficSources agrupa los pedidos por su fuente de tráfico (UTM o Referrer)
+func (r *AttributionRepo) GetTrafficSources(ctx context.Context, tenantID shared.TenantID) ([]map[string]any, error) {
+	query := `
+		SELECT 
+			COALESCE(
+				NULLIF(utm_source, ''), 
+				CASE WHEN referrer IS NOT NULL AND referrer != '' THEN 'Referidos' ELSE 'Directo' END
+			) AS source,
+			COUNT(*) as value
+		FROM order_attribution
+		WHERE tenant_id = $1
+		GROUP BY source
+		ORDER BY value DESC
+		LIMIT 5
+	`
+
+	rows, err := r.pool.Query(ctx, query, tenantID.String())
+	if err != nil {
+		return nil, fmt.Errorf("attribution_repo: get traffic sources: %w", err)
+	}
+	defer rows.Close()
+
+	var results []map[string]any
+	for rows.Next() {
+		var source string
+		var value int
+		if err := rows.Scan(&source, &value); err != nil {
+			return nil, err
+		}
+		results = append(results, map[string]any{
+			"source": source,
+			"value":  value,
+		})
+	}
+	return results, rows.Err()
 }
 
 // pgxTx es la interfaz mínima que necesitamos; compatible con pgx.Tx.

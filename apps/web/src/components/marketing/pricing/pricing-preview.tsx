@@ -26,14 +26,14 @@ export function PricingPreview() {
             const isFounder = plan.isFounder;
 
             return (
-              <div 
-                key={plan.id} 
+              <div
+                key={plan.id}
                 className={`relative flex flex-col p-8 rounded-[2rem] border ${isFounder ? 'border-foreground shadow-lg bg-white' : 'border-border bg-neutral-50'} overflow-hidden`}
               >
                 {isFounder && (
                   <div className="absolute top-0 inset-x-0 h-1.5 bg-accent" />
                 )}
-                
+
                 <div className="mb-8">
                   <h3 className="text-heading-lg font-display text-foreground mb-2">{plan.name}</h3>
                   <div className="flex items-baseline gap-1">
@@ -74,7 +74,7 @@ export function PricingPreview() {
                 </div>
 
                 <Link href={`/registro?plan=${plan.id}`} className="w-full mt-auto">
-                  <Button variant={isFounder ? "default" : "dark"} className="w-full">
+                  <Button variant={isFounder ? "default" : "secondary"} className="w-full">
                     Empezar ahora
                   </Button>
                 </Link>

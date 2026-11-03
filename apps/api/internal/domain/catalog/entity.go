@@ -25,10 +25,10 @@ const (
 )
 
 const (
-	MaxNameLen  = 120
-	MaxDescLen  = 5000
-	MaxSlugLen  = 80
-	MaxSKULen   = 64
+	MaxNameLen   = 120
+	MaxDescLen   = 5000
+	MaxSlugLen   = 80
+	MaxSKULen    = 64
 	MaxPriceCent = int64(1_000_000_000_00) // $1B cap defensivo
 )
 
@@ -48,6 +48,7 @@ type Product struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Version     int64
+	Stock       int64 // <-- ÚNICO CAMPO AÑADIDO (Requerido por el Repositorio)
 }
 
 // NewProduct crea y valida un producto en estado draft.

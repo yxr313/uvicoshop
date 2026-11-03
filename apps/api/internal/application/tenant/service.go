@@ -142,6 +142,16 @@ func (s *Service) Onboard(ctx context.Context, in OnboardInput) (*OnboardOutput,
 	return out, nil
 }
 
+// CheckSlug verifica si un slug ya está en uso en la base de datos.
+func (s *Service) CheckSlug(ctx context.Context, slug string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenants WHERE slug = $1)`, slug).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check slug: %w", err)
+	}
+	return !exists, nil // Retorna true si ESTÁ DISPONIBLE
+}
+
 var ErrSlugTaken = errors.New("tenant: slug ya existe")
 
 func isUniqueViolation(err error) bool {

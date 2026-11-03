@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -10,7 +11,6 @@ import {
   IconBell,
   IconSettings,
   IconLogout,
-  IconBrandGithub,
   IconSun,
   IconMoon,
 } from "@tabler/icons-react";
@@ -37,6 +37,12 @@ import {
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Solo renderizamos el icono del tema cuando el componente está montado en el cliente
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <SidebarMenu>
@@ -83,10 +89,10 @@ export function NavUser() {
                   </span>
                 </div>
                 <Badge
-                  variant="secondary"
-                  className="bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400"
+                  variant="outline"
+                  className="border-border text-[10px] font-medium text-muted-foreground"
                 >
-                  Free
+                  Fundador
                 </Badge>
               </div>
             </DropdownMenuLabel>
@@ -119,17 +125,17 @@ export function NavUser() {
                 setTheme(resolvedTheme === "dark" ? "light" : "dark")
               }
             >
-              {resolvedTheme === "dark" ? (
-                <IconSun className="size-4" />
+              {/* Renderizado condicional basado en el estado de montaje */}
+              {mounted ? (
+                resolvedTheme === "dark" ? (
+                  <IconSun className="size-4" />
+                ) : (
+                  <IconMoon className="size-4" />
+                )
               ) : (
-                <IconMoon className="size-4" />
+                <IconMoon className="size-4 opacity-0" />
               )}
               Toggle theme
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href="https://github.com" target="_blank" rel="noreferrer">
-                <IconBrandGithub className="size-4" /> Star on GitHub
-              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

@@ -23,7 +23,7 @@ export default function AuthLayout({
         <div className="w-full max-w-[400px] mx-auto py-12">
           {/* Logo UVICO arriba del formulario */}
           <Link href="/" className="font-display font-bold text-2xl tracking-tight text-foreground inline-block mb-12">
-            UVICO
+            
           </Link>
           {children}
         </div>

@@ -24,7 +24,7 @@ interface PlanCardProps {
 
 export function PlanCard({ plan, price, cycle, isPopular }: PlanCardProps) {
   return (
-    <div 
+    <div
       className={cn(
         "relative flex flex-col p-8 rounded-[2rem] border transition-all duration-500 hover:shadow-xl",
         plan.isFounder ? "border-foreground shadow-lg bg-white" : "border-border bg-neutral-50",
@@ -34,7 +34,7 @@ export function PlanCard({ plan, price, cycle, isPopular }: PlanCardProps) {
       {plan.isFounder && (
         <div className="absolute top-0 inset-x-0 h-1.5 bg-accent rounded-t-[2rem]" />
       )}
-      
+
       {isPopular && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1 shadow-sm">
           <Zap size={12} className="fill-current" />
@@ -71,7 +71,7 @@ export function PlanCard({ plan, price, cycle, isPopular }: PlanCardProps) {
       </div>
 
       <Link href={`/registro?plan=${plan.id}`} className="w-full mt-auto">
-        <Button variant={plan.isFounder ? "default" : "dark"} className="w-full">
+        <Button variant={plan.isFounder ? "default" : "secondary"} className="w-full">
           Empezar ahora
         </Button>
       </Link>

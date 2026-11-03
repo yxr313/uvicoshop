@@ -59,14 +59,15 @@ func NewLineItem(productID shared.ProductID, sku, name string, qty int32, unitPr
 }
 
 type Order struct {
-	ID         string
-	TenantID   shared.TenantID
-	CustomerID shared.CustomerID
-	SaleMode   SaleMode
-	ProviderID *shared.ProviderID
-	Status     Status
-	Currency   shared.Currency
-	Items      []LineItem
+	ID           string
+	TenantID     shared.TenantID
+	CustomerID   shared.CustomerID
+	CustomerName string
+	SaleMode     SaleMode
+	ProviderID   *shared.ProviderID
+	Status       Status
+	Currency     shared.Currency
+	Items        []LineItem
 
 	Total           shared.Money
 	UvicoCommission shared.Money
@@ -84,14 +85,14 @@ type Order struct {
 	RefundedAt  *time.Time
 
 	// Pago manual: campos introducidos en 0023.
-	PaymentMethod             string
-	AccessToken               string
-	CustomerPaymentReference  string
-	CustomerPaymentProofURL   string
-	CustomerSubmittedAt       *time.Time
-	MerchantConfirmedAt       *time.Time
-	MerchantConfirmedBy       string
-	MerchantRejectionReason   string
+	PaymentMethod            string
+	AccessToken              string
+	CustomerPaymentReference string
+	CustomerPaymentProofURL  string
+	CustomerSubmittedAt      *time.Time
+	MerchantConfirmedAt      *time.Time
+	MerchantConfirmedBy      string
+	MerchantRejectionReason  string
 }
 
 type SplitConfig struct {

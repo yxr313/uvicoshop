@@ -1,58 +1,30 @@
 import {
+  IconLayoutGrid,
   IconLayoutDashboard,
   IconChartBar,
+  IconChartPie,
+  IconBuildingStore,
+  IconBox,
   IconShoppingCart,
   IconUsers,
-  IconCreditCard,
-  IconBox,
-  IconMessageCircle,
-  IconLayoutKanban,
-  IconCalendarEvent,
-  IconChecklist,
-  IconMail,
-  IconUserCircle,
-  IconSettings,
-  IconTag,
-  IconFileInvoice,
-  IconLockAccess,
-  IconHelpCircle,
-  IconSparkles,
-  IconFolders,
+  IconBriefcase,
   IconUsersGroup,
-  IconActivity,
-  IconPuzzle,
+  IconTruckDelivery,
+  IconLayout,
+  IconUserCircle,
+  IconCreditCard,
+  IconSettings,
+  IconShieldLock,
   IconBell,
-  IconNotes,
-  IconFolder,
-  IconTable,
-  IconChartPie,
-  IconForms,
-  IconComponents,
-  IconMoodEmpty,
+  IconSparkles,
   IconRocket,
   IconWorld,
-  IconAlertTriangle,
-  IconReportAnalytics,
-  IconCategory,
-  IconPackages,
-  IconDiscount2,
-  IconTruck,
-  IconStar,
-  IconShoppingBag,
-  IconShieldLock,
-  IconAddressBook,
-  IconLifebuoy,
-  IconArticle,
-  IconCode,
-  IconSearch,
-  IconCoin,
-  IconStethoscope,
-  IconTruckDelivery,
-  IconBriefcase,
-  IconBuildingSkyscraper,
+  IconBuildingFactory, // NUEVO: Icono para Proveedores
+  IconPalette,         // NUEVO: Icono para POD
   type Icon,
 } from "@tabler/icons-react";
 
+// ─── Workspaces ──────────────────────────────────────────────────
 export type Workspace = {
   name: string;
   plan: string;
@@ -60,11 +32,12 @@ export type Workspace = {
 };
 
 export const workspaces: Workspace[] = [
-  { name: "OrbynAdmin", plan: "Enterprise", icon: IconSparkles },
-  { name: "Vertex Labs", plan: "Startup", icon: IconRocket },
-  { name: "Northwind", plan: "Free", icon: IconWorld },
+  { name: "Mi Tienda", plan: "Fundador", icon: IconSparkles },
+  { name: "Tienda Norte", plan: "Pro", icon: IconRocket },
+  { name: "Tienda Sur", plan: "Free", icon: IconWorld },
 ];
 
+// ─── Tipos de navegación ─────────────────────────────────────────
 export type NavChild = { title: string; url: string };
 
 export type NavItem = {
@@ -77,160 +50,72 @@ export type NavItem = {
 
 export type NavGroup = {
   label: string;
+  icon: Icon;
   items: NavItem[];
 };
 
+// ─── Navegación ──────────────────────────────────────────────────
 export const navGroups: NavGroup[] = [
   {
-    label: "Dashboards",
+    label: "Panel",
+    icon: IconLayoutGrid,
     items: [
       { title: "Overview", url: "/dashboard", icon: IconLayoutDashboard },
       { title: "Analytics", url: "/dashboard/analytics", icon: IconChartBar },
-      { title: "Reports", url: "/reports", icon: IconReportAnalytics },
-      { title: "E-Commerce", url: "/dashboard/ecommerce", icon: IconShoppingCart },
-      { title: "CRM", url: "/dashboard/crm", icon: IconUsers },
-      { title: "Crypto", url: "/dashboard/crypto", icon: IconCoin, badge: "New" },
-      { title: "Healthcare", url: "/dashboard/healthcare", icon: IconStethoscope },
-      { title: "Logistics", url: "/dashboard/logistics", icon: IconTruckDelivery },
-      { title: "Human Resources", url: "/dashboard/hr", icon: IconBriefcase },
-      { title: "Real Estate", url: "/dashboard/real-estate", icon: IconBuildingSkyscraper },
     ],
   },
   {
-    label: "E-Commerce",
+    label: "Mi Tienda",
+    icon: IconBuildingStore,
+    items: [
+      { title: "Resumen", url: "/dashboard/ecommerce", icon: IconChartPie },
+      { title: "Productos", url: "/dashboard/ecommerce/products", icon: IconBox },
+      { title: "Pedidos", url: "/dashboard/ecommerce/orders", icon: IconShoppingCart },
+      { title: "Clientes", url: "/dashboard/ecommerce/customers", icon: IconUsers },
+    ],
+  },
+  {
+    label: "Proveedores",
+    icon: IconBuildingFactory,
     items: [
       {
-        title: "Products",
-        icon: IconBox,
+        title: "Dropshipping",
+        icon: IconTruckDelivery,
         items: [
-          { title: "All Products", url: "/products" },
-          { title: "Storefront", url: "/storefront" },
-          { title: "Add Product", url: "/products/new" },
+          { title: "Directorio", url: "/dashboard/suppliers/dropshipping" },
+          { title: "Mis Conexiones", url: "/dashboard/suppliers/dropshipping/connections" },
+          { title: "Pedidos de Prueba", url: "/dashboard/suppliers/dropshipping/samples" },
         ],
       },
       {
-        title: "Orders",
-        icon: IconShoppingCart,
+        title: "Print on Demand",
+        icon: IconPalette,
         items: [
-          { title: "All Orders", url: "/orders" },
-          { title: "Create Order", url: "/orders/new" },
-        ],
-      },
-      {
-        title: "Customers",
-        icon: IconUsers,
-        items: [
-          { title: "All Customers", url: "/customers" },
-          { title: "Add Customer", url: "/customers/new" },
-        ],
-      },
-      { title: "Categories", url: "/categories", icon: IconCategory },
-      { title: "Inventory", url: "/inventory", icon: IconPackages },
-      { title: "Discounts", url: "/discounts", icon: IconDiscount2 },
-      { title: "Shipping", url: "/shipping", icon: IconTruck },
-      { title: "Reviews", url: "/reviews", icon: IconStar },
-      {
-        title: "Invoices",
-        icon: IconFileInvoice,
-        items: [
-          { title: "All Invoices", url: "/invoices" },
-          { title: "New Invoice", url: "/invoices/new" },
-        ],
-      },
-      {
-        title: "Checkout",
-        icon: IconShoppingBag,
-        items: [
-          { title: "Cart", url: "/cart" },
-          { title: "Checkout", url: "/checkout" },
+          { title: "Estudio de Diseño", url: "/dashboard/suppliers/pod" },
+          { title: "Mis Diseños", url: "/dashboard/suppliers/pod/designs" },
+          { title: "Órdenes POD", url: "/dashboard/suppliers/pod/orders" },
         ],
       },
     ],
   },
   {
-    label: "Workspace",
+    label: "Operaciones",
+    icon: IconBriefcase,
     items: [
-      { title: "Projects", url: "/projects", icon: IconFolders, badge: "6" },
-      { title: "Team", url: "/team", icon: IconUsersGroup },
-      { title: "Roles & Permissions", url: "/roles", icon: IconShieldLock },
-      { title: "Contacts", url: "/contacts", icon: IconAddressBook },
-      { title: "Activity", url: "/activity", icon: IconActivity },
+      { title: "CRM", url: "/dashboard/crm", icon: IconUsersGroup },
+      { title: "Logística", url: "/dashboard/logistics", icon: IconTruckDelivery },
+      { title: "Editor Visual", url: "/dashboard/editor", icon: IconLayout },
     ],
   },
   {
-    label: "Apps",
+    label: "Cuenta",
+    icon: IconUserCircle,
     items: [
-      { title: "AI Assistant", url: "/apps/ai-chat", icon: IconSparkles, badge: "New" },
-      { title: "Chat", url: "/apps/chat", icon: IconMessageCircle },
-      { title: "Mail", url: "/apps/mail", icon: IconMail, badge: "5" },
-      { title: "Calendar", url: "/apps/calendar", icon: IconCalendarEvent },
-      { title: "Kanban", url: "/apps/kanban", icon: IconLayoutKanban },
-      { title: "Tasks", url: "/apps/tasks", icon: IconChecklist },
-      { title: "Notes", url: "/apps/notes", icon: IconNotes },
-      { title: "File Manager", url: "/apps/file-manager", icon: IconFolder },
-      {
-        title: "Blog",
-        icon: IconArticle,
-        items: [
-          { title: "All Posts", url: "/blog" },
-          { title: "New Post", url: "/blog/new" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { title: "Profile", url: "/profile", icon: IconUserCircle },
-      { title: "Settings", url: "/settings", icon: IconSettings },
-      { title: "Notifications", url: "/notifications", icon: IconBell, badge: "3" },
-      { title: "Developers", url: "/developers", icon: IconCode },
-      { title: "Integrations", url: "/integrations", icon: IconPuzzle },
-    ],
-  },
-  {
-    label: "Pages",
-    items: [
-      { title: "Pricing", url: "/pricing", icon: IconTag },
-      { title: "Search Results", url: "/search", icon: IconSearch },
-      { title: "Support", url: "/support", icon: IconLifebuoy },
-      { title: "Help Center", url: "/help", icon: IconHelpCircle },
-      {
-        title: "Authentication",
-        icon: IconLockAccess,
-        items: [
-          { title: "Sign In", url: "/login" },
-          { title: "Sign Up", url: "/register" },
-          { title: "Forgot Password", url: "/forgot-password" },
-          { title: "Reset Password", url: "/reset-password" },
-          { title: "Verify OTP", url: "/verify-otp" },
-          { title: "Lock Screen", url: "/lock" },
-        ],
-      },
-      {
-        title: "Error Pages",
-        icon: IconAlertTriangle,
-        items: [
-          { title: "404 · Not Found", url: "/errors/404" },
-          { title: "403 · Forbidden", url: "/errors/403" },
-          { title: "500 · Server Error", url: "/errors/500" },
-          { title: "503 · Unavailable", url: "/errors/503" },
-          { title: "Maintenance", url: "/maintenance" },
-          { title: "Coming Soon", url: "/coming-soon" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "UI & Examples",
-    items: [
-      { title: "Data Table", url: "/examples/data-table", icon: IconTable },
-      { title: "Charts", url: "/examples/charts", icon: IconChartPie },
-      { title: "Form Layouts", url: "/examples/forms", icon: IconForms },
-      { title: "UI Elements", url: "/examples/components", icon: IconComponents },
-      { title: "Empty States", url: "/examples/empty-states", icon: IconMoodEmpty },
-      { title: "Landing Page", url: "/landing", icon: IconWorld },
-      { title: "Onboarding", url: "/onboarding", icon: IconRocket },
+      { title: "Suscripción", url: "/dashboard/pricing", icon: IconCreditCard },
+      { title: "Ajustes", url: "/dashboard/settings", icon: IconSettings },
+      { title: "Perfil", url: "/dashboard/account/profile", icon: IconUserCircle },
+      { title: "Seguridad", url: "/dashboard/account/security", icon: IconShieldLock },
+      { title: "Notificaciones", url: "/dashboard/account/notifications", icon: IconBell },
     ],
   },
 ];

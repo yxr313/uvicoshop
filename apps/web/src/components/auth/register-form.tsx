@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2, MailCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const registerSchema = z.object({
@@ -30,6 +30,7 @@ export function RegisterForm() {
   const router = useRouter();
   const supabase = createClient();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const {
     register,
@@ -46,7 +47,6 @@ export function RegisterForm() {
   const password = watch("password") || "";
   const termsAccepted = watch("terms");
 
-  // Lógica simple para el medidor de fuerza
   const passwordStrength = {
     length: password.length >= 8,
     upper: /[A-Z]/.test(password),
@@ -55,7 +55,9 @@ export function RegisterForm() {
 
   const onSubmit = async (data: RegisterFormValues) => {
     setError(null);
-    const { error: authError } = await supabase.auth.signUp({
+    
+    // 1. Crear el usuario en Supabase Auth (con metadatos de tienda)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -71,9 +73,62 @@ export function RegisterForm() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // Si Supabase requiere confirmación por correo, no hay sesión inmediata
+    if (!authData.session) {
+      setSuccess(true);
+      return;
+    }
+
+    // (Por si en el futuro desactivas la confirmación) Crear la tienda de inmediato
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/v1";
+      const res = await fetch(`${apiUrl}/tenants`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          name: data.fullName + "'s Store",
+          slug: data.storeSlug,
+          plan_id: "founder",
+          interval: "monthly",
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setError("El nombre de tienda (slug) ya está en uso. Por favor elige otro.");
+          return;
+        }
+        throw new Error(errData.message || "Error al crear tu tienda.");
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+      
+    } catch (err: any) {
+      setError(err.message || "Error de conexión con el servidor.");
+    }
   };
+
+  if (success) {
+    return (
+      <div className="w-full text-center py-12">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <MailCheck className="w-8 h-8 text-green-600" />
+        </div>
+        <h2 className="text-2xl font-semibold mb-3">Revisa tu correo</h2>
+        <p className="text-muted-foreground mb-8">
+          Te hemos enviado un enlace de confirmación. Haz clic en él para activar tu cuenta y acceder a tu tienda.
+        </p>
+        <Link href="/login" className="text-foreground font-medium hover:underline">
+          Volver al inicio de sesión
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -83,6 +138,7 @@ export function RegisterForm() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* ... (los mismos campos de nombre, tienda, correo y contraseña) ... */}
         
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">Nombre completo</label>
@@ -133,7 +189,6 @@ export function RegisterForm() {
             className="w-full h-11 px-4 rounded-xl bg-neutral-50 border border-transparent focus:border-neutral-300 focus:bg-white focus:ring-0 transition-all text-sm outline-none"
           />
           
-          {/* Medidor de fuerza */}
           {password.length > 0 && (
             <div className="flex flex-col gap-2 mt-2">
               <div className="flex gap-1 h-1">

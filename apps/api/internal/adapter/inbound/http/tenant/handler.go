@@ -53,6 +53,7 @@ func New(svc *apptenant.Service, jwt *middleware.JWTService, logger *slog.Logger
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", h.onboard)
+	r.Get("/check-slug", h.checkSlug) // <-- Nueva ruta
 	return r
 }
 
@@ -118,6 +119,27 @@ func (h *Handler) onboard(w http.ResponseWriter, r *http.Request) {
 		Slug:           out.Slug,
 		TrialEndsAt:    out.TrialEndsAt.Format("2006-01-02T15:04:05Z07:00"),
 	})
+}
+
+func (h *Handler) CheckSlugPublic(w http.ResponseWriter, r *http.Request) {
+	h.checkSlug(w, r)
+}
+
+func (h *Handler) checkSlug(w http.ResponseWriter, r *http.Request) {
+	slug := r.URL.Query().Get("slug")
+	if slug == "" {
+		writeError(w, http.StatusBadRequest, "missing_slug", "slug requerido")
+		return
+	}
+
+	available, err := h.svc.CheckSlug(r.Context(), slug)
+	if err != nil {
+		h.logger.Error("check slug failed", "err", err, "slug", slug)
+		writeError(w, http.StatusInternalServerError, "internal", "error interno")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"available": available})
 }
 
 type errorResponse struct {

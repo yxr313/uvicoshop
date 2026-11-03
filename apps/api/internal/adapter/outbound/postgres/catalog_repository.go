@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"uvico-api/internal/domain/cart"
 	"uvico-api/internal/domain/catalog"
 	"uvico-api/internal/domain/shared"
 	"uvico-api/internal/platform/database"
@@ -115,22 +114,24 @@ func (r *CatalogRepo) Update(ctx context.Context, p *catalog.Product) error {
 
 func (r *CatalogRepo) GetByID(ctx context.Context, tenantID shared.TenantID, id shared.ProductID) (*catalog.Product, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, provider_id, sale_mode, sku, slug, name, description,
-		       price_cents, currency, status, published_at, archived_at,
-		       created_at, updated_at, version
-		  FROM products
-		 WHERE id = $1 AND tenant_id = $2
+		SELECT p.id, p.tenant_id, p.provider_id, p.sale_mode, p.sku, p.slug, p.name, p.description,
+		       p.price_cents, p.currency, p.status, p.published_at, p.archived_at,
+		       p.created_at, p.updated_at, p.version, COALESCE(i.on_hand, 0) as stock
+		  FROM products p
+		  LEFT JOIN inventory_items i ON p.id = i.product_id AND p.tenant_id = i.tenant_id
+		 WHERE p.id = $1 AND p.tenant_id = $2
 	`, id.String(), tenantID.String())
 	return scanProduct(row)
 }
 
 func (r *CatalogRepo) GetBySlug(ctx context.Context, tenantID shared.TenantID, slug string) (*catalog.Product, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, provider_id, sale_mode, sku, slug, name, description,
-		       price_cents, currency, status, published_at, archived_at,
-		       created_at, updated_at, version
-		  FROM products
-		 WHERE tenant_id = $1 AND slug = $2
+		SELECT p.id, p.tenant_id, p.provider_id, p.sale_mode, p.sku, p.slug, p.name, p.description,
+		       p.price_cents, p.currency, p.status, p.published_at, p.archived_at,
+		       p.created_at, p.updated_at, p.version, COALESCE(i.on_hand, 0) as stock
+		  FROM products p
+		  LEFT JOIN inventory_items i ON p.id = i.product_id AND p.tenant_id = i.tenant_id
+		 WHERE p.tenant_id = $1 AND p.slug = $2
 	`, tenantID.String(), slug)
 	return scanProduct(row)
 }
@@ -142,21 +143,30 @@ func (r *CatalogRepo) List(ctx context.Context, f catalog.ListFilter) ([]*catalo
 	}
 	args := []any{f.TenantID.String(), limit}
 	q := `
-		SELECT id, tenant_id, provider_id, sale_mode, sku, slug, name, description,
-		       price_cents, currency, status, published_at, archived_at,
-		       created_at, updated_at, version
-		  FROM products
-		 WHERE tenant_id = $1
+		SELECT p.id, p.tenant_id, p.provider_id, p.sale_mode, p.sku, p.slug, p.name, p.description,
+		       p.price_cents, p.currency, p.status, p.published_at, p.archived_at,
+		       p.created_at, p.updated_at, p.version, COALESCE(i.on_hand, 0) as stock
+		  FROM products p
+		  LEFT JOIN inventory_items i ON p.id = i.product_id AND p.tenant_id = i.tenant_id
+		 WHERE p.tenant_id = $1
 	`
 	if f.Status != nil {
 		args = append(args, string(*f.Status))
-		q += fmt.Sprintf(" AND status = $%d", len(args))
+		q += fmt.Sprintf(" AND p.status = $%d", len(args))
+	}
+	if f.SaleMode != nil {
+		args = append(args, string(*f.SaleMode))
+		q += fmt.Sprintf(" AND p.sale_mode = $%d", len(args))
+	}
+	if f.Search != nil && *f.Search != "" {
+		args = append(args, "%"+*f.Search+"%")
+		q += fmt.Sprintf(" AND (p.name ILIKE $%d OR p.sku ILIKE $%d)", len(args), len(args))
 	}
 	if f.CursorCreatedAt != nil && f.CursorID != nil {
 		args = append(args, *f.CursorCreatedAt, f.CursorID.String())
-		q += fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", len(args)-1, len(args))
+		q += fmt.Sprintf(" AND (p.created_at, p.id) < ($%d, $%d)", len(args)-1, len(args))
 	}
-	q += " ORDER BY created_at DESC, id DESC LIMIT $2"
+	q += " ORDER BY p.created_at DESC, p.id DESC LIMIT $2"
 
 	rows, err := r.pool.Query(ctx, q, args...)
 	if err != nil {
@@ -210,11 +220,12 @@ func scanProduct(row rowScanner) (*catalog.Product, error) {
 	var id, tenantID, saleMode, currency, status string
 	var providerID *string
 	var priceCents int64
+	var stock int64
 
 	err := row.Scan(
 		&id, &tenantID, &providerID, &saleMode, &p.SKU, &p.Slug, &p.Name, &p.Description,
 		&priceCents, &currency, &status, &p.PublishedAt, &p.ArchivedAt,
-		&p.CreatedAt, &p.UpdatedAt, &p.Version,
+		&p.CreatedAt, &p.UpdatedAt, &p.Version, &stock,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, catalog.ErrNotFound
@@ -232,6 +243,7 @@ func scanProduct(row rowScanner) (*catalog.Product, error) {
 	p.SaleMode = catalog.SaleMode(saleMode)
 	p.Status = catalog.Status(status)
 	p.Price = shared.Money{AmountCents: priceCents, Currency: shared.Currency(currency)}
+	p.Stock = stock
 
 	if err := p.Price.Validate(); err != nil {
 		return nil, fmt.Errorf("catalog_repo: price corrupto: %w", err)
@@ -239,9 +251,6 @@ func scanProduct(row rowScanner) (*catalog.Product, error) {
 	return &p, nil
 }
 
-// GetPublishedPrice retorna precio actual de un producto publicado.
-// Usado por cart.Service para revalidar precios y cerrar el agujero de
-// manipulación de price_cents desde el cliente.
 func (r *CatalogRepo) GetPublishedPrice(
 	ctx context.Context,
 	tenantID shared.TenantID,
@@ -255,7 +264,7 @@ func (r *CatalogRepo) GetPublishedPrice(
 		 WHERE tenant_id = $1 AND id = $2 AND status = 'published'
 	`, tenantID.String(), productID.String()).Scan(&sku, &name, &priceCents, &currency)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", "", 0, "", cart.ErrProductNotFound
+		return "", "", 0, "", catalog.ErrNotFound // <-- ARREGLADO AQUÍ
 	}
 	if err != nil {
 		return "", "", 0, "", fmt.Errorf("catalog_repo: get price: %w", err)

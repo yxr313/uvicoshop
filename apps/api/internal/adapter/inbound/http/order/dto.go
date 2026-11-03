@@ -3,9 +3,11 @@ package order
 type orderSummaryResponse struct {
 	ID            string `json:"id"`
 	CustomerID    string `json:"customer_id"`
+	CustomerName  string `json:"customer_name,omitempty"`
 	Status        string `json:"status"`
 	PaymentMethod string `json:"payment_method,omitempty"`
 	TotalCents    int64  `json:"total_cents"`
+	MerchantNet   int64  `json:"merchant_net_cents"` // <-- AÑADIDO
 	Currency      string `json:"currency"`
 	CreatedAt     string `json:"created_at"`
 }
@@ -21,7 +23,7 @@ type orderDetailResponse struct {
 	MerchantConfirmedBy      string              `json:"merchant_confirmed_by,omitempty"`
 	MerchantRejectionReason  string              `json:"merchant_rejection_reason,omitempty"`
 	UvicoCommission          int64               `json:"uvico_commission_cents"`
-	MerchantNet              int64               `json:"merchant_net_cents"`
+	// MerchantNet ya no va aquí porque está en el summary
 }
 
 type orderItemResponse struct {

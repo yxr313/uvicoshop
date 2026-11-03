@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
+	analyticshttp "uvico-api/internal/adapter/inbound/http/analytics"
 	bcvhttp "uvico-api/internal/adapter/inbound/http/bcv"
 	billinghttp "uvico-api/internal/adapter/inbound/http/billing"
 	carthttp "uvico-api/internal/adapter/inbound/http/cart"
@@ -104,7 +105,13 @@ func New(deps *Dependencies) http.Handler {
 	orderRepo := postgres.NewOrderRepo(deps.Pool)
 	payRepo := postgres.NewPaymentRepo()
 	customerRepo := postgres.NewCustomerRepo(deps.Pool)
-	attributionRepo := postgres.NewAttributionRepo()
+
+	attributionRepo := postgres.NewAttributionRepo(deps.Pool)
+	analyticsRepo := postgres.NewAnalyticsRepo(deps.Pool) // <-- NUEVO REPO
+
+	// PASAMOS LOS 3 REPOSITORIOS AL HANDLER DE ANALÍTICAS
+	analyticsH := analyticshttp.New(attributionRepo, orderRepo, analyticsRepo)
+
 	pmRepo := postgres.NewPaymentMethodRepo(deps.Pool)
 	idemStore := redisadapter.NewIdempotencyStore(deps.Redis)
 
@@ -164,6 +171,8 @@ func New(deps *Dependencies) http.Handler {
 	tenantSvc := apptenant.NewService(deps.Pool, deps.Logger)
 	jwtSvc := middleware.NewJWTService(deps.Cfg.Supabase, deps.Pool, deps.Redis, deps.Logger)
 
+	tenantH := tenanthttp.New(tenantSvc, jwtSvc, deps.Logger)
+
 	// ─── Rutas ─────────────────────────────────────────────────────
 	r.Route(deps.Cfg.Server.BasePath, func(r chi.Router) {
 		// Público (rate limit por IP)
@@ -172,6 +181,10 @@ func New(deps *Dependencies) http.Handler {
 			r.Mount("/billing", billinghttp.New(billingSvc, deps.Cfg, deps.Logger).Routes())
 			r.Mount("/storefront", storefrontH.Routes(storefrontResolver))
 			r.Get("/bcv/rate", bcvH.GetRate)
+			r.Get("/tenants/check-slug", tenantH.CheckSlugPublic)
+			
+			// RUTA PÚBLICA DE TRACKING (Para el comprador final)
+			r.Post("/analytics/track", analyticsH.TrackVisit)
 		})
 
 		// Webhooks (HMAC, sin rate limit)
@@ -180,7 +193,8 @@ func New(deps *Dependencies) http.Handler {
 		// Autenticadas (JWT)
 		r.Group(func(r chi.Router) {
 			r.Use(jwtSvc.Middleware())
-			r.Mount("/tenants", tenanthttp.New(tenantSvc, jwtSvc, deps.Logger).Routes())
+
+			r.Mount("/tenants", tenantH.Routes())
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RateLimit(deps.Redis, 100, time.Second))
@@ -189,6 +203,9 @@ func New(deps *Dependencies) http.Handler {
 				r.Mount("/cart", cartH.Routes())
 				r.Mount("/uploads", imageH.UploadRoutes())
 				r.Mount("/store/payment-methods", pmH.MerchantRoutes())
+
+				// RUTA PRIVADA DE ANALÍTICAS (Para el Dashboard)
+				r.Mount("/analytics", analyticsH.PrivateRoutes())
 
 				r.Route("/products/{productID}/images", func(r chi.Router) {
 					r.Mount("/", imageH.ImageRoutes())

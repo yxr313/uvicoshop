@@ -232,6 +232,7 @@ func toOrderSummary(o *orderdomain.Order) orderSummaryResponse {
 		Status:        string(o.Status),
 		PaymentMethod: o.PaymentMethod,
 		TotalCents:    o.Total.AmountCents,
+		MerchantNet:   o.MerchantNet.AmountCents,
 		Currency:      string(o.Currency),
 		CreatedAt:     o.CreatedAt.Format(time.RFC3339),
 	}
@@ -258,7 +259,7 @@ func toOrderDetail(o *orderdomain.Order) orderDetailResponse {
 		MerchantConfirmedBy:      o.MerchantConfirmedBy,
 		MerchantRejectionReason:  o.MerchantRejectionReason,
 		UvicoCommission:          o.UvicoCommission.AmountCents,
-		MerchantNet:              o.MerchantNet.AmountCents,
+		
 	}
 	if o.CustomerSubmittedAt != nil {
 		d.CustomerSubmittedAt = o.CustomerSubmittedAt.Format(time.RFC3339)

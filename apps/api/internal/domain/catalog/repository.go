@@ -10,6 +10,8 @@ import (
 type ListFilter struct {
 	TenantID        shared.TenantID
 	Status          *Status
+	SaleMode        *SaleMode // <-- AÑADIDO
+	Search          *string   // <-- AÑADIDO
 	CursorCreatedAt *time.Time
 	CursorID        *shared.ProductID
 	Limit           int32
@@ -23,4 +25,7 @@ type Repository interface {
 	List(ctx context.Context, filter ListFilter) ([]*Product, error)
 	SlugExists(ctx context.Context, tenantID shared.TenantID, slug string, excludeID *shared.ProductID) (bool, error)
 	SKUExists(ctx context.Context, tenantID shared.TenantID, sku string, excludeID *shared.ProductID) (bool, error)
+	
+	// AÑADIDO: Requerido por el carrito y por el catalog_repository.go
+	GetPublishedPrice(ctx context.Context, tenantID shared.TenantID, productID shared.ProductID) (string, string, int64, string, error)
 }

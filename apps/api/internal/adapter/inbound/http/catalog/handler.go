@@ -10,10 +10,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
+	"uvico-api/internal/adapter/inbound/http/middleware"
 	appcatalog "uvico-api/internal/application/catalog"
 	catalogdomain "uvico-api/internal/domain/catalog"
 	"uvico-api/internal/domain/shared"
-	"uvico-api/internal/adapter/inbound/http/middleware"
 )
 
 type Handler struct {
@@ -93,6 +93,13 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("status"); s != "" {
 		st := catalogdomain.Status(s)
 		filter.Status = &st
+	}
+	if sm := r.URL.Query().Get("sale_mode"); sm != "" {
+		mode := catalogdomain.SaleMode(sm)
+		filter.SaleMode = &mode
+	}
+	if q := r.URL.Query().Get("search"); q != "" {
+		filter.Search = &q
 	}
 	if lim := r.URL.Query().Get("limit"); lim != "" {
 		var n int32
@@ -208,8 +215,6 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toProductResponse(p))
 }
 
-// handleServiceError mapea errores de dominio a códigos HTTP. Los errores
-// internos se loggean y se devuelven como 500 sin detalles.
 func (h *Handler) handleServiceError(w http.ResponseWriter, err error, op string) {
 	switch {
 	case errors.Is(err, catalogdomain.ErrNotFound):
@@ -257,6 +262,7 @@ func toProductResponse(p *catalogdomain.Product) productResponse {
 		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
 		Version:     p.Version,
+		Stock:       p.Stock,
 	}
 }
 
