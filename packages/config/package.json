@@ -4,11 +4,26 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./tailwind": "./tailwind/index.css",
-    "./tailwind/theme.css": "./tailwind/theme.css",
-    "./tailwind/base.css": "./tailwind/base.css",
-    "./tailwind/typography.css": "./tailwind/typography.css",
-    "./tailwind/motion.css": "./tailwind/motion.css",
+    "./tailwind": {
+      "style": "./tailwind/index.css",
+      "default": "./tailwind/index.css"
+    },
+    "./tailwind/theme.css": {
+      "style": "./tailwind/theme.css",
+      "default": "./tailwind/theme.css"
+    },
+    "./tailwind/base.css": {
+      "style": "./tailwind/base.css",
+      "default": "./tailwind/base.css"
+    },
+    "./tailwind/typography.css": {
+      "style": "./tailwind/typography.css",
+      "default": "./tailwind/typography.css"
+    },
+    "./tailwind/motion.css": {
+      "style": "./tailwind/motion.css",
+      "default": "./tailwind/motion.css"
+    },
     "./typescript/base.json": "./typescript/base.json",
     "./typescript/nextjs.json": "./typescript/nextjs.json",
     "./typescript/react-library.json": "./typescript/react-library.json",
